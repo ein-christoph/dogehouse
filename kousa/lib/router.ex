@@ -3,7 +3,6 @@ defmodule Kousa.Router do
 
   use Plug.Router
   use Sentry.PlugCapture
-
   plug(Kousa.Cors)
   plug(:match)
   plug(:dispatch)
@@ -13,8 +12,9 @@ defmodule Kousa.Router do
     |> send_resp(200, "")
   end
 
-  forward("/auth/github", to: Kousa.Auth)
-  forward("/me", to: Kousa.Me)
+  forward("/auth/github", to: Kousa.GitHubAuth)
+  forward("/auth/twitter", to: Kousa.TwitterAuth)
+  # forward("/me", to: Kousa.Me)
   forward("/dev", to: Kousa.Dev)
 
   get _ do

@@ -2,10 +2,13 @@ import React from "react";
 import ReactModal from "react-modal";
 import { tw } from "twind";
 import { wsend } from "../../createWebsocket";
+import { useRoomChatStore } from "../modules/room-chat/useRoomChatStore";
 import { Codicon } from "../svgs/Codicon";
 import { CurrentRoom, User } from "../types";
 import { Button } from "./Button";
+import { modalConfirm } from "./ConfirmModal";
 import { UserProfile } from "./UserProfile";
+import { UserVolumeSlider } from "./UserVolumeSlider";
 
 interface ProfileModalProps {
   onClose: () => void;
@@ -42,6 +45,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   iAmMod,
   room,
 }) => {
+  const bannedUserIdMap = useRoomChatStore((s) => s.bannedUserIdMap);
   return (
     <ReactModal
       isOpen={!!profile}
@@ -69,18 +73,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <Button
                   variant="small"
                   onClick={() => {
-                    const y = window.confirm(
-                      "Are you sure you want to block this user from joining any room you ever create?"
+                    modalConfirm(
+                      "Are you sure you want to block this user from joining any room you ever create?",
+                      () => {
+                        onClose();
+                        wsend({
+                          op: "block_user_and_from_room",
+                          d: {
+                            userId: profile.id,
+                          },
+                        });
+                      }
                     );
-                    if (y) {
-                      onClose();
-                      wsend({
-                        op: "block_user_and_from_room",
-                        d: {
-                          userId: profile.id,
-                        },
-                      });
-                    }
                   }}
                 >
                   block user
@@ -89,6 +93,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             ) : null}
           </div>
           <UserProfile profile={profile} />
+          {!isMe && profile.canSpeakForRoomId === room.id ? (
+            <div className={tw`mb-4`}>
+              <UserVolumeSlider userId={profile.id} />
+            </div>
+          ) : null}
           {!isMe && iAmCreator ? (
             <>
               <div className={tw`mb-4`}>
@@ -146,6 +155,23 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </Button>
                 </div>
               ) : null}
+              {!(profile.id in bannedUserIdMap) ? (
+                <div className={tw`mb-4`}>
+                  <Button
+                    onClick={() => {
+                      onClose();
+                      wsend({
+                        op: "ban_from_room_chat",
+                        d: {
+                          userId: profile.id,
+                        },
+                      });
+                    }}
+                  >
+                    ban from chat
+                  </Button>
+                </div>
+              ) : null}
               <div>
                 <Button
                   onClick={() => {
@@ -163,7 +189,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </>
           ) : null}
-          {isMe && !iAmCreator && profile.canSpeakForRoomId === room.id ? (
+          {isMe &&
+          !iAmCreator &&
+          (profile.id in room.raiseHandMap ||
+            profile.canSpeakForRoomId === room.id) ? (
             <div className={tw`mb-4`}>
               <Button
                 onClick={() => {

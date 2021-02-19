@@ -1,6 +1,6 @@
 import { useAtom } from "jotai";
 import React, { useEffect } from "react";
-import { Route, useHistory, useLocation } from "react-router-dom";
+import { Route, Switch, useHistory, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { closeWebSocket, wsend } from "../createWebsocket";
 import { useWsHandlerStore } from "../webrtc/stores/useWsHandlerStore";
@@ -14,12 +14,14 @@ import {
   setMeAtom,
   setPublicRoomsAtom,
 } from "./atoms";
+import { useRoomChatStore } from "./modules/room-chat/useRoomChatStore";
 import { BanUsersPage } from "./pages/BanUsersPage";
 import { FollowingOnlineList } from "./pages/FollowingOnlineList";
 import { FollowListPage } from "./pages/FollowListPage";
 import { Home } from "./pages/Home";
 import { InviteList } from "./pages/InviteList";
 import { MyProfilePage } from "./pages/MyProfilePage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { RoomPage } from "./pages/RoomPage";
 import { SearchUsersPage } from "./pages/SearchUsersPage";
 import { ViewUserPage } from "./pages/ViewUserPage";
@@ -46,11 +48,24 @@ export const Routes: React.FC<RoutesProps> = () => {
   const [, setInviteList] = useAtom(setInviteListAtom);
   useEffect(() => {
     addMultipleWsListener({
+      new_room_name: ({ name, roomId }) => {
+        setCurrentRoom((cr) =>
+          !cr || cr.id !== roomId ? cr : { ...cr, name }
+        );
+      },
+      chat_user_banned: ({ userId }) => {
+        useRoomChatStore.getState().addBannedUser(userId);
+      },
+      new_chat_msg: ({ msg }) => {
+        useRoomChatStore.getState().addMessage(msg);
+      },
       room_privacy_change: ({ roomId, isPrivate, name }) => {
         setCurrentRoom((cr) =>
           !cr || cr.id !== roomId ? cr : { ...cr, name, isPrivate }
         );
-        toast("room is now public", { type: "info" });
+        toast(`Room is now ${isPrivate ? "private" : "public"}`, {
+          type: "info",
+        });
       },
       banned: () => {
         toast("you got banned", { type: "error" });
@@ -134,13 +149,14 @@ export const Routes: React.FC<RoutesProps> = () => {
           cr && cr.id === roomId ? { ...cr, creatorId: userId } : cr
         );
       },
-      speaker_removed: ({ userId, roomId, muteMap }) => {
+      speaker_removed: ({ userId, roomId, muteMap, raiseHandMap }) => {
         setCurrentRoom((c) =>
           !c || c.id !== roomId
             ? c
             : {
                 ...c,
                 muteMap,
+                raiseHandMap,
                 users: c.users.map((x) =>
                   userId === x.id ? { ...x, canSpeakForRoomId: null } : x
                 ),
@@ -173,8 +189,8 @@ export const Routes: React.FC<RoutesProps> = () => {
         );
       },
       user_left_room: ({ userId }) => {
-        setCurrentRoom((cr) =>
-          !cr
+        setCurrentRoom((cr) => {
+          return !cr
             ? null
             : {
                 ...cr,
@@ -183,8 +199,8 @@ export const Routes: React.FC<RoutesProps> = () => {
                 ),
                 numPeopleInside: cr.numPeopleInside - 1,
                 users: cr.users.filter((x) => x.id !== userId),
-              }
-        );
+              };
+        });
       },
       new_user_join_room: ({ user, muteMap }) => {
         setCurrentRoom((cr) =>
@@ -261,6 +277,7 @@ export const Routes: React.FC<RoutesProps> = () => {
       },
       new_current_room: ({ room }) => {
         if (room) {
+          useRoomChatStore.getState().clearChat();
           wsend({ op: "get_current_room_users", d: {} });
           history.push("/room/" + room.id);
         }
@@ -280,6 +297,7 @@ export const Routes: React.FC<RoutesProps> = () => {
           }
           showErrorToast(d.error);
         } else {
+          useRoomChatStore.getState().clearChat();
           setCurrentRoom(() => roomToCurrentRoom(d.room));
           wsend({ op: "get_current_room_users", d: {} });
         }
@@ -287,6 +305,7 @@ export const Routes: React.FC<RoutesProps> = () => {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   useEffect(() => {
     if (location.pathname.startsWith("/room/")) {
       let found = false;
@@ -306,9 +325,10 @@ export const Routes: React.FC<RoutesProps> = () => {
         wsend({ op: "join_room", d: { roomId: id } });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <>
+    <Switch>
       <Route exact path="/" component={Home} />
       <Route exact path="/room/:id" component={RoomPage} />
       <Route exact path="/user" component={ViewUserPage} />
@@ -323,6 +343,7 @@ export const Routes: React.FC<RoutesProps> = () => {
         path={["/followers/:userId", "/following/:userId"]}
         component={FollowListPage}
       />
-    </>
+      <Route component={NotFoundPage} />
+    </Switch>
   );
 };

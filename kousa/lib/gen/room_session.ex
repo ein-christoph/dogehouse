@@ -1,12 +1,30 @@
 defmodule Kousa.Gen.RoomSession do
   use GenServer
 
-  def start_link(%{room_id: room_id, user_id: user_id, muted: muted}) do
-    # IO.puts("starting room session " <> room_id)
+  defmodule State do
+    @type t :: %__MODULE__{
+            room_id: String.t(),
+            users: [String.t()],
+            muteMap: map(),
+            raiseHandMap: map(),
+            inviteMap: map(),
+            activeSpeakerMap: map(),
+            auto_speaker: boolean()
+          }
 
+    defstruct room_id: "",
+              users: [],
+              muteMap: %{},
+              raiseHandMap: %{},
+              inviteMap: %{},
+              activeSpeakerMap: %{},
+              auto_speaker: false
+  end
+
+  def start_link(%{room_id: room_id, user_id: user_id, muted: muted}) do
     GenServer.start_link(
       __MODULE__,
-      %{
+      %State{
         room_id: room_id,
         users: [user_id],
         auto_speaker: false,
@@ -20,6 +38,13 @@ defmodule Kousa.Gen.RoomSession do
   end
 
   def init(x) do
+    Kousa.Gen.RoomChat.start(x.room_id, %Kousa.Gen.RoomChat.State{
+      room_id: x.room_id,
+      users: x.users,
+      ban_map: %{},
+      last_message_map: %{}
+    })
+
     {:ok, x}
   end
 
@@ -141,19 +166,21 @@ defmodule Kousa.Gen.RoomSession do
      }}
   end
 
-  def handle_cast({:speaker_removed, user_id}, state) do
+  def handle_cast({:speaker_removed, user_id}, %State{} = state) do
     new_mm = Map.delete(state.muteMap, user_id)
+    new_rhm = Map.delete(state.raiseHandMap, user_id)
 
     ws_fan(state.users, :vscode, %{
       op: "speaker_removed",
       d: %{
         userId: user_id,
         roomId: state.room_id,
-        muteMap: new_mm
+        muteMap: new_mm,
+        raiseHandMap: new_rhm
       }
     })
 
-    {:noreply, %{state | muteMap: new_mm}}
+    {:noreply, %State{state | muteMap: new_mm, raiseHandMap: new_rhm}}
   end
 
   def handle_cast({:speaker_added, user_id, muted}, state) do
@@ -174,7 +201,9 @@ defmodule Kousa.Gen.RoomSession do
     {:noreply, %{state | muteMap: new_mm}}
   end
 
-  def handle_cast({:join_room, user, mute}, state) do
+  def handle_cast({:join_room, user, mute}, %State{} = state) do
+    Kousa.RegUtils.lookup_and_cast(Kousa.Gen.RoomChat, state.room_id, {:add_user, user.id})
+
     muteMap =
       if is_nil(mute),
         do: state.muteMap,
@@ -196,6 +225,15 @@ defmodule Kousa.Gen.RoomSession do
          ],
          muteMap: muteMap
      }}
+  end
+
+  def handle_cast({:new_room_name, new_name}, %State{} = state) do
+    ws_fan(state.users, :vscode, %{
+      op: "new_room_name",
+      d: %{name: new_name, roomId: state.room_id}
+    })
+
+    {:noreply, state}
   end
 
   def handle_cast({:answer_hand, user_id, value}, state) do
@@ -230,6 +268,7 @@ defmodule Kousa.Gen.RoomSession do
 
   def handle_cast({:destroy, user_id}, state) do
     users = Enum.filter(state.users, fn uid -> uid != user_id end)
+    Kousa.Gen.RoomChat.kill(state.room_id)
 
     ws_fan(users, :vscode, %{
       op: "room_destroyed",
@@ -239,8 +278,9 @@ defmodule Kousa.Gen.RoomSession do
     {:stop, :normal, state}
   end
 
-  def handle_cast({:leave_room, user_id}, state) do
+  def handle_cast({:leave_room, user_id}, %State{} = state) do
     users = Enum.filter(state.users, fn uid -> uid != user_id end)
+    Kousa.RegUtils.lookup_and_cast(Kousa.Gen.RoomChat, state.room_id, {:remove_user, user_id})
 
     ws_fan(users, :vscode, %{
       op: "user_left_room",
@@ -254,6 +294,7 @@ defmodule Kousa.Gen.RoomSession do
     }
 
     if length(new_state.users) == 0 do
+      Kousa.Gen.RoomChat.kill(state.room_id)
       {:stop, :normal, new_state}
     else
       {:noreply, new_state}

@@ -23,7 +23,6 @@ body {
 #root {
   margin: 0;
   display: flex;
-  flex-direction: column;
   height: 100%;
 }
 
@@ -54,6 +53,7 @@ a:active {
 
 a:focus {
   box-shadow: 0 0 0 3px rgb(153 204 255 / 50%);
+  outline: none;
 }
 
 code {
@@ -99,10 +99,7 @@ textarea {
   width: 100%;
   border: none;
   font-family: var(--vscode-font-family);
-  padding: var(--input-padding-vertical) var(--input-padding-horizontal);
-  color: var(--vscode-input-foreground);
   outline-color: var(--vscode-input-border);
-  background-color: var(--vscode-input-background);
 }
 
 input::placeholder,
@@ -132,4 +129,30 @@ input {
   font-size: 18;
   padding-left: 8px;
   padding-right: 8px;
+}
+
+option {
+  background-color: var(--vscode-dropdown-background);
+}
+
+::-webkit-scrollbar {
+    width: 0.8rem;
+}
+
+::-webkit-scrollbar-track {
+    background: rgb(66, 66, 66);
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgb(104, 104, 104);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(123, 123, 123);
+  
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgb(161, 161, 161, .8);
 }

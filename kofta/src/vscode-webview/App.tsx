@@ -8,6 +8,7 @@ import { useSocketStatus } from "../webrtc/stores/useSocketStatus";
 import { useWsHandlerStore } from "../webrtc/stores/useWsHandlerStore";
 import { setMeAtom } from "./atoms";
 import { Button } from "./components/Button";
+import { CenterLayout } from "./components/CenterLayout";
 import { KeybindListener } from "./components/KeybindListener";
 import { Wrapper } from "./components/Wrapper";
 import { apiBaseUrl } from "./constants";
@@ -22,7 +23,22 @@ setup({
       sans: ["var(--vscode-font-family)"],
       serif: ["var(--vscode-font-family)"],
     },
+    borderColor: {
+      tmpBo1: "#CCCCCC",
+    },
+    textColor: {
+      tmpC1: "#A6A6A6",
+      tmpC2: "#333333",
+      tmpC3: "#FEFEFE",
+      tmpC4: "#0B78E3",
+      input: "var(--vscode-input-foreground)",
+    },
     backgroundColor: {
+      tmpBg1: "#262626",
+      tmpBg2: "#333333",
+      tmpBg3: "#666666",
+      tmpBg4: "#595959",
+      input: "var(--vscode-input-background)",
       buttonHover: "var(--vscode-button-hoverBackground)",
       button: "var(--vscode-button-background)",
       buttonHoverRed: "var(--vscode-errorForeground)",
@@ -58,7 +74,7 @@ const defaultQueryFn = async ({ queryKey }: { queryKey: string }) => {
 const queryClient = new QueryClient({
   defaultOptions: {
     mutations: {
-      onError: (e) => {
+      onError: e => {
         if ("message" in (e as Error)) {
           showErrorToast((e as Error).message);
         }
@@ -67,7 +83,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: false,
       staleTime: 60 * 1000 * 5,
-      onError: (e) => {
+      onError: e => {
         if ("message" in (e as Error)) {
           showErrorToast((e as Error).message);
         }
@@ -80,13 +96,13 @@ const queryClient = new QueryClient({
 interface AppProps {}
 
 export const WebviewApp: React.FC<AppProps> = () => {
-  const hasTokens = useTokenStore((s) => !!s.accessToken && !!s.refreshToken);
+  const hasTokens = useTokenStore(s => !!s.accessToken && !!s.refreshToken);
   const wsKilledByServer = useSocketStatus(
-    (s) => s.status === "closed-by-server"
+    s => s.status === "closed-by-server",
   );
   const [, setMe] = useAtom(setMeAtom);
   useState(() => {
-    useWsHandlerStore.getState().addWsListener("auth-good", (d) => {
+    useWsHandlerStore.getState().addWsListener("auth-good", d => {
       setMe(d.user);
     });
   });
@@ -121,22 +137,24 @@ export const WebviewApp: React.FC<AppProps> = () => {
 
   if (wsKilledByServer) {
     return (
-      <Wrapper>
-        <div
-          style={{ fontSize: "calc(var(--vscode-font-size)*1.2)" }}
-          className={tw`mb-4 mt-8`}
-        >
-          Websocket was killed by the server. This usually happens when you open
-          the website in another tab.
-        </div>
-        <Button
-          onClick={() => {
-            createWebSocket();
-          }}
-        >
-          reconnect
-        </Button>
-      </Wrapper>
+      <CenterLayout>
+        <Wrapper>
+          <div
+            style={{ fontSize: "calc(var(--vscode-font-size)*1.2)" }}
+            className={tw`mb-4 mt-8`}
+          >
+            Websocket was killed by the server. This usually happens when you
+            open the website in another tab.
+          </div>
+          <Button
+            onClick={() => {
+              createWebSocket();
+            }}
+          >
+            reconnect
+          </Button>
+        </Wrapper>
+      </CenterLayout>
     );
   }
 
