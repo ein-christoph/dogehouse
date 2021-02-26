@@ -1,6 +1,6 @@
 # Contributing to DogeHouse
 We love your input! We want to make contributing to this project as easy and transparent as possible, whether it's:
-- Reporting a issue
+- Reporting an issue
 - Discussing the current state of the code
 - Submitting a fix
 - Proposing new features
@@ -13,13 +13,22 @@ The code of conduct is described in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 All changes happen through pull requests, Pull requests are the best way to propose changes. We actively welcome your pull requests and invite you to submit pull requests directly <a href="https://github.com/benawad/dogehouse/pulls">here</a> and, after review, these can be merged into the project.
 
 ## Pull Requests
-1. Fork the repo and create your branch from `master`.
+1. Fork the repo and create your branch (usually named `patch-%the number of PRs you've already made%`) from `staging`.
 2. If you've added code that should be tested, add some tests' example.
 3. Ensure to describe your pull request.
 
-## Local Development
+## Quickstart Local Frontend Development
+
+Do this if you only want to do React stuff and don't want to touch Elixir:
+
+Navigate to `/kofta`
+
+Run `npm i` and then `npm start:staging` (this tells React to connect to a hosted version of the backend for development purposes).
+
+## Full Local Development
 How to run locally
-### Back-end
+
+### Backend
 #### RabbitMQ
 Install RabbitMQ:
 - **macOS**: Run `brew install rabbitmq`
@@ -73,7 +82,7 @@ export WEB_URL=http://localhost:3000
 export PORT=4001
 ```
 
-> You can save this variables in a `.txt` and run `source path/to/file.txt`
+> You can save these variables in a `.txt` and run `source path/to/file.txt`
 
 Run the following commands:
 ```shell
@@ -99,7 +108,7 @@ WEBRTC_LISTEN_IP=127.0.0.1
 
 Then run `npm run build` and `npm start`.
 
-### Front-end
+### Frontend
 
 #### `kofta`
 Navigate to `/kofta` and create an `.env` file based on `.env.example`.

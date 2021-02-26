@@ -4,6 +4,7 @@ import ReactModal from "react-modal";
 const customStyles = {
   overlay: {
     backgroundColor: "rgba(0,0,0,.5)",
+    zIndex: 999,
   },
   content: {
     top: "50%",
@@ -14,7 +15,7 @@ const customStyles = {
     transform: "translate(-50%, -50%)",
     backgroundColor: "#262626",
     border: "none",
-    width: "100%",
+    width: "90%",
     maxWidth: 500,
   },
 };
